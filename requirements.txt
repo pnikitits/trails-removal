@@ -1,0 +1,6 @@
+astropy
+numpy
+torch
+tqdm
+wandb
+opencv-python
