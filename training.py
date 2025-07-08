@@ -14,8 +14,9 @@ import os
 import time
 import wandb
 from utils import show, check_image_range, auto_stretch
+from pathlib import Path
 
-LOG_WANDB = True
+LOG_WANDB = False
 
 
 def train_model(
@@ -124,7 +125,7 @@ def train_model(
         )
 
         if save_path and (epoch + 1) % save_every == 0:
-            torch.save(model.state_dict(), f"{save_path}/model_epoch_{epoch + 1}.pth")
+            torch.save(model.state_dict(), save_path / f"model_epoch_{epoch + 1}.pth")
             print(f"Model saved at {save_path}/model_epoch_{epoch + 1}.pth")
 
         if LOG_WANDB:
@@ -167,11 +168,8 @@ def main():
     )
     print(f"Using device: {device}")
 
-    file_paths = glob("data/debayered_set/*.fit")
-    print(f"Found {len(file_paths)} FITS files")
-
     full_dataset = FITSSatelliteTileDataset(
-        directory="data/debayered_set/",
+        directory=Path("data") / "debayered_set",
         tile_size=256,
         overlap=32,
         augment=True,
@@ -204,7 +202,7 @@ def main():
 
     os.makedirs("results", exist_ok=True)
     timestamp = time.strftime("%Y%m%d-%H%M%S")
-    save_path = f"results/{timestamp}"
+    save_path = Path("results") / timestamp
     os.makedirs(save_path, exist_ok=True)
 
     model, log_train_y, log_train_x, log_val_y, log_val_x = train_model(
@@ -228,7 +226,7 @@ def main():
     plt.legend()
     plt.grid(True)
     plt.tight_layout()
-    plt.savefig(f"results/{timestamp}/loss_curves.png")
+    plt.savefig(save_path / "loss_curves.png")
     plt.clf()
 
     model.eval()
@@ -251,7 +249,7 @@ def main():
     plt.title("Model Output")
     plt.axis("off")
     plt.tight_layout()
-    plt.savefig(f"results/{timestamp}/sample_output.png")
+    plt.savefig(save_path / "sample_output.png")
 
 
 if __name__ == "__main__":

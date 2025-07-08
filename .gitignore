@@ -1,3 +1,6 @@
 data
 results
 *.ipynb
+wandb
+__pycache__
+.DS_Store
