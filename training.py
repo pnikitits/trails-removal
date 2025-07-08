@@ -15,6 +15,7 @@ import time
 import wandb
 from utils import show, check_image_range, auto_stretch
 from pathlib import Path
+from torch.amp import autocast, GradScaler
 
 LOG_WANDB = False
 
@@ -67,6 +68,9 @@ def train_model(
     log_val_y = []
     log_val_x = []
 
+    if torch.cuda.is_available():
+        scaler = GradScaler('cuda')
+
     for epoch in range(num_epochs):
         model.train()
         epoch_train_loss = 0.0
@@ -81,10 +85,21 @@ def train_model(
             noisy, clean = noisy.to(device), clean.to(device)
 
             optimizer.zero_grad()
-            output = model(noisy)
-            loss = criterion(output, clean)
-            loss.backward()
-            optimizer.step()
+
+            if torch.cuda.is_available():
+                with autocast('cuda'):
+                    output = model(noisy)
+                    loss = criterion(output, clean)
+
+                scaler.scale(loss).backward()
+                scaler.step(optimizer)
+                scaler.update()
+            else:
+                output = model(noisy)
+                loss = criterion(output, clean)
+
+                loss.backward()
+                optimizer.step()
 
             epoch_train_loss += loss.item()
 
@@ -109,8 +124,15 @@ def train_model(
         with torch.no_grad():
             for noisy, clean in val_loader:
                 noisy, clean = noisy.to(device), clean.to(device)
-                output = model(noisy)
-                loss = criterion(output, clean)
+
+                if torch.cuda.is_available():
+                    with autocast('cuda'):
+                        output = model(noisy)
+                        loss = criterion(output, clean)
+                else:
+                    output = model(noisy)
+                    loss = criterion(output, clean)
+
                 epoch_val_loss += loss.item()
         avg_val_loss = epoch_val_loss / len(val_loader)
 
@@ -176,6 +198,8 @@ def main():
         preload=False,
     )
 
+    print(f"Dataset size: {len(full_dataset)}")
+
     # --- Check a sample of the dataset ---
     # for i in range(100):
     #     check_sample(full_dataset, i)
@@ -189,13 +213,14 @@ def main():
 
     train_loader = DataLoader(
         train_dataset,
-        batch_size=8,
+        batch_size=32,
         shuffle=True,
-        num_workers=8,
+        num_workers=16,
         persistent_workers=True,
+        pin_memory=True,
     )
     val_loader = DataLoader(
-        val_dataset, batch_size=8, shuffle=False, num_workers=3, persistent_workers=True
+        val_dataset, batch_size=32, shuffle=False, num_workers=6, persistent_workers=True, pin_memory=True
     )
 
     model = UNet().to(device)
@@ -214,7 +239,7 @@ def main():
         criterion=torch.nn.MSELoss(),
         device=device,
         save_path=save_path,
-        save_every=4,
+        save_every=1,
     )
 
     plt.figure(figsize=(10, 5))
