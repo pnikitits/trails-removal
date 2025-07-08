@@ -69,7 +69,7 @@ def train_model(
     log_val_x = []
 
     if torch.cuda.is_available():
-        scaler = GradScaler('cuda')
+        scaler = GradScaler("cuda")
 
     for epoch in range(num_epochs):
         model.train()
@@ -87,7 +87,7 @@ def train_model(
             optimizer.zero_grad()
 
             if torch.cuda.is_available():
-                with autocast('cuda'):
+                with autocast("cuda"):
                     output = model(noisy)
                     loss = criterion(output, clean)
 
@@ -126,7 +126,7 @@ def train_model(
                 noisy, clean = noisy.to(device), clean.to(device)
 
                 if torch.cuda.is_available():
-                    with autocast('cuda'):
+                    with autocast("cuda"):
                         output = model(noisy)
                         loss = criterion(output, clean)
                 else:
@@ -191,19 +191,19 @@ def main():
     print(f"Using device: {device}")
 
     full_dataset = FITSSatelliteTileDataset(
-        directory=Path("data") / "debayered_set",
+        directory=Path("data") / "debayered_subset",
         tile_size=256,
         overlap=32,
         augment=True,
-        preload=False,
+        preload=True,
     )
 
     print(f"Dataset size: {len(full_dataset)}")
 
     # --- Check a sample of the dataset ---
-    # for i in range(100):
-    #     check_sample(full_dataset, i)
-    # return
+    for i in range(100):
+        check_sample(full_dataset, i)
+    return
     # --- Check a sample of the dataset ---
 
     train_size = int(0.8 * len(full_dataset))
@@ -220,7 +220,12 @@ def main():
         pin_memory=True,
     )
     val_loader = DataLoader(
-        val_dataset, batch_size=32, shuffle=False, num_workers=6, persistent_workers=True, pin_memory=True
+        val_dataset,
+        batch_size=32,
+        shuffle=False,
+        num_workers=6,
+        persistent_workers=True,
+        pin_memory=True,
     )
 
     model = UNet().to(device)

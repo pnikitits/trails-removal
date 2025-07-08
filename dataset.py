@@ -29,8 +29,6 @@ class FITSSatelliteTileDataset(Dataset):
         preload : bool
             Whether to preload all tiles into memory.
         """
-        if preload:
-            ValueError("Preload not checked !!!")
         self.paths = sorted(
             [
                 os.path.join(directory, f)
@@ -55,14 +53,24 @@ class FITSSatelliteTileDataset(Dataset):
                 img = np.transpose(img, (1, 2, 0))
                 img = rgb_to_grayscale(img)
 
+                img_max = img.max()
                 _, min_val, max_val = normalize(img)
 
                 clean_tiles, _ = split_into_tiles(img, tile_size, overlap)
                 for clean in clean_tiles:
-                    noisy = add_fake_trail(clean.copy()) if augment else clean.copy()
+                    noisy = (
+                        add_fake_trail(clean.copy(), img_max=img_max)
+                        if augment
+                        else clean.copy()
+                    )
                     noisy, _, _ = normalize(noisy, min_val=min_val, max_val=max_val)
                     clean, _, _ = normalize(clean, min_val=min_val, max_val=max_val)
                     self.preloaded_tiles.append((noisy, clean))
+
+        print(
+            f"Dataset initialized with {len(self.paths)} images, "
+            f"{len(self.preloaded_tiles)} tiles preloaded."
+        )
 
     def __len__(self):
         if self.preload:
