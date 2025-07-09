@@ -4,6 +4,9 @@ import numpy as np
 from utils import *
 import torch
 import os
+from tqdm import tqdm
+from concurrent.futures import ProcessPoolExecutor
+import multiprocessing
 
 
 class FITSSatelliteTileDataset(Dataset):
@@ -45,27 +48,18 @@ class FITSSatelliteTileDataset(Dataset):
         self.preloaded_tiles = []
 
         if preload:
-            for path in self.paths:
-                # img = fits.getdata(path).astype(np.float32)
-                with fits.open(path) as hdul:
-                    img = hdul[0].data.astype(np.float32)
+            num_workers = multiprocessing.cpu_count() - 1
+            args_list = [(path, tile_size, overlap, augment) for path in self.paths]
 
-                img = np.transpose(img, (1, 2, 0))
-                img = rgb_to_grayscale(img)
-
-                img_max = img.max()
-                _, min_val, max_val = normalize(img)
-
-                clean_tiles, _ = split_into_tiles(img, tile_size, overlap)
-                for clean in clean_tiles:
-                    noisy = (
-                        add_fake_trail(clean.copy(), img_max=img_max)
-                        if augment
-                        else clean.copy()
-                    )
-                    noisy, _, _ = normalize(noisy, min_val=min_val, max_val=max_val)
-                    clean, _, _ = normalize(clean, min_val=min_val, max_val=max_val)
-                    self.preloaded_tiles.append((noisy, clean))
+            self.preloaded_tiles = []
+            with ProcessPoolExecutor(max_workers=num_workers) as executor:
+                for result in tqdm(
+                    executor.map(
+                        FITSSatelliteTileDataset._process_fits_file, args_list
+                    ),
+                    total=len(args_list),
+                ):
+                    self.preloaded_tiles.extend(result)
 
         print(
             f"Dataset initialized with {len(self.paths)} images, "
@@ -121,3 +115,31 @@ class FITSSatelliteTileDataset(Dataset):
         ny = ((h - self.tile_size) // step) + 1
         nx = ((w - self.tile_size) // step) + 1
         return ny * nx
+
+    @staticmethod
+    def _process_fits_file(args):
+        path, tile_size, overlap, augment = args
+
+        with fits.open(path, memmap=False) as hdul:
+            img = hdul[0].data.astype(np.float32)
+
+        img = np.transpose(img, (1, 2, 0))
+        img = rgb_to_grayscale(img)
+
+        img_max = img.max()
+        _, min_val, max_val = normalize(img)
+
+        clean_tiles, _ = split_into_tiles(img, tile_size, overlap)
+
+        tiles = []
+        for clean in clean_tiles:
+            noisy = (
+                add_fake_trail(clean.copy(), img_max=img_max)
+                if augment
+                else clean.copy()
+            )
+            noisy, _, _ = normalize(noisy, min_val=min_val, max_val=max_val)
+            clean, _, _ = normalize(clean, min_val=min_val, max_val=max_val)
+            tiles.append((noisy, clean))
+
+        return tiles
