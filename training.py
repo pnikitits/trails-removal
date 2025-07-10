@@ -191,31 +191,36 @@ def main():
     print(f"Using device: {device}")
 
     full_dataset = FITSSatelliteTileDataset(
-        directory=Path("data") / "debayered_subset",
+        directory=Path("data") / "debayered_set",
         tile_size=256,
         overlap=32,
         augment=True,
         preload=True,
+        fraction=0.5,
     )
 
     print(f"Dataset size: {len(full_dataset)}")
 
     # --- Check a sample of the dataset ---
-    for i in range(100):
-        check_sample(full_dataset, i)
-    return
+    # for i in range(100):
+    #     check_sample(full_dataset, i)
+    # return
     # --- Check a sample of the dataset ---
 
     train_size = int(0.8 * len(full_dataset))
     val_size = len(full_dataset) - train_size
 
     train_dataset, val_dataset = random_split(full_dataset, [train_size, val_size])
+    del full_dataset
+
+    n_cpu = os.cpu_count()
+    print(f"n_cpu: {n_cpu}")
 
     train_loader = DataLoader(
         train_dataset,
         batch_size=32,
         shuffle=True,
-        num_workers=16,
+        num_workers=n_cpu - 1,
         persistent_workers=True,
         pin_memory=True,
     )
@@ -223,7 +228,7 @@ def main():
         val_dataset,
         batch_size=32,
         shuffle=False,
-        num_workers=6,
+        num_workers=n_cpu - 1,
         persistent_workers=True,
         pin_memory=True,
     )
@@ -241,7 +246,7 @@ def main():
         train_loader=train_loader,
         val_loader=val_loader,
         optimizer=torch.optim.Adam(model.parameters(), lr=1e-3),
-        criterion=torch.nn.MSELoss(),
+        criterion=torch.nn.L1Loss(),
         device=device,
         save_path=save_path,
         save_every=1,
