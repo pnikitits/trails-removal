@@ -43,10 +43,10 @@ def auto_stretch(
 
 def add_fake_trail(
     img: np.ndarray,
-    thickness_range: tuple = (4, 6),
-    brightness_range: tuple = (0.35, 0.45),
-    alpha: float = 0.01,
-    gaussian_sigma_factor: float = 0.55,
+    thickness_range: tuple = (2, 7),
+    brightness_range: tuple = (0.3, 0.45),
+    alpha_range: tuple = (0.008, 0.012),
+    gaussian_sigma_range: tuple = (0.53, 0.57),
     img_max: float = None,
 ) -> np.ndarray:
     """
@@ -74,6 +74,8 @@ def add_fake_trail(
     x1, y1 = np.random.randint(0, w), np.random.randint(0, h)
     x2, y2 = np.random.randint(0, w), np.random.randint(0, h)
     thickness = np.random.randint(*thickness_range)
+    gaussian_sigma_factor = np.random.uniform(*gaussian_sigma_range)
+    alpha = np.random.uniform(*alpha_range)
 
     if img_max is None:
         img_max = img.max()
