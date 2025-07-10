@@ -17,6 +17,7 @@ class FITSSatelliteTileDataset(Dataset):
         overlap: int = 64,
         augment: bool = True,
         preload: bool = False,
+        fraction: float = 1.0,
     ):
         """
         Parameters
@@ -31,6 +32,8 @@ class FITSSatelliteTileDataset(Dataset):
             Whether to apply fake trail augmentation.
         preload : bool
             Whether to preload all tiles into memory.
+        fraction : float
+            Fraction of images to use from the dataset (default: 1.0).
         """
         self.paths = sorted(
             [
@@ -39,6 +42,13 @@ class FITSSatelliteTileDataset(Dataset):
                 if f.lower().endswith((".fit", ".fits"))
             ]
         )
+
+        if fraction < 1.0:
+            # setect random subset of images
+            num_images = int(len(self.paths) * fraction)
+            self.paths = np.random.choice(
+                self.paths, num_images, replace=False
+            ).tolist()
 
         self.tile_size = tile_size
         self.overlap = overlap
