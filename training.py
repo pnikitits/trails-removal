@@ -157,24 +157,61 @@ def train_model(
                     predicted_residual = model(sample_input)
                     sample_output = (sample_input - predicted_residual).cpu()
 
-                idx = 0
-                plt.figure(figsize=(15, 5))
-                plt.subplot(1, 3, 1)
-                plt.imshow(sample_input[idx].cpu().numpy().squeeze(), cmap="gray")
-                plt.title("Noisy Input")
-                plt.axis("off")
-                plt.subplot(1, 3, 2)
-                plt.imshow(sample_target[idx].cpu().numpy().squeeze(), cmap="gray")
-                plt.title("Clean Target")
-                plt.axis("off")
-                plt.subplot(1, 3, 3)
-                plt.imshow(sample_output[idx].squeeze(), cmap="gray")
-                plt.title("Model Output")
-                plt.axis("off")
+                # plot sample outputs
+                plt.figure(figsize=(15, 15))
+                plt.subplot(len(sample_input), 3, 1)
+
+                for idx in range(len(sample_input)):
+                    _input = sample_input[idx].cpu().numpy().squeeze()
+                    _target = sample_target[idx].cpu().numpy().squeeze()
+                    _output = sample_output[idx].squeeze()
+                    plt.subplot(len(sample_input), 3, idx * 3 + 1)
+                    plt.imshow(_input, cmap="gray")
+                    plt.title("Noisy Input")
+                    plt.axis("off")
+                    plt.subplot(len(sample_input), 3, idx * 3 + 2)
+                    plt.imshow(_target, cmap="gray")
+                    plt.title("Clean Target")
+                    plt.axis("off")
+                    plt.subplot(len(sample_input), 3, idx * 3 + 3)
+                    plt.imshow(_output, cmap="gray")
+                    plt.title("Model Output")
+                    plt.axis("off")
+
                 plt.tight_layout()
                 plt.savefig(save_path / f"sample_output_{epoch + 1}.png")
                 plt.clf()
                 plt.close()
+
+                # plot learning if any loss is below the threshold (0.0002)
+                if any(loss < 0.0002 for loss in log_train_y + log_val_y):
+                    plt.figure(figsize=(10, 5))
+                    plt.plot(
+                        log_train_x,
+                        log_train_y,
+                        label="Training Loss",
+                        color=(7 / 255, 27 / 255, 112 / 255),
+                        linewidth=1,
+                    )
+                    plt.plot(
+                        log_val_x,
+                        log_val_y,
+                        label="Validation Loss",
+                        linestyle="--",
+                        color=(7 / 255, 27 / 255, 112 / 255),
+                        linewidth=1,
+                    )
+                    plt.xlabel("Epoch")
+                    plt.ylabel("L1 Loss")
+                    plt.title("Training and Validation Loss")
+                    plt.legend()
+                    plt.grid(True, axis="y", which="major", color="gray", linewidth=0.1)
+                    plt.tight_layout()
+                    plt.ylim(0, 0.0002)
+                    plt.axhline(y=0.000107, color="r", linestyle="--")
+                    plt.savefig(save_path / f"loss_curves.png")
+                    plt.clf()
+                    plt.close()
 
         if LOG_WANDB:
             wandb.log({"val/loss": avg_val_loss, "epoch": epoch + 1})
@@ -285,7 +322,7 @@ def main():
 
     train_subset = torch.utils.data.Subset(
         train_dataset,
-        random.sample(range(len(train_dataset)), min(20, len(train_dataset))),
+        random.sample(range(len(train_dataset)), min(40, len(train_dataset))),
     )
     train_loader = DataLoader(train_subset, batch_size=4, shuffle=True)
 
@@ -310,53 +347,10 @@ def main():
         criterion=criterion,
         device=device,
         save_path=save_path,
-        save_model=False,
+        save_model=True,
         save_samples=True,
         save_every=100,
     )
-
-    # plt.figure(figsize=(10, 5))
-    # plt.plot(log_train_x, log_train_y, label="Training Loss")
-    # plt.plot(log_val_x, log_val_y, label="Validation Loss", linestyle="--")
-    # plt.xlabel("Epoch")
-    # plt.ylabel("MSE Loss")
-    # plt.title("Training and Validation Loss")
-    # plt.legend()
-    # plt.grid(True)
-    # plt.tight_layout()
-    # plt.savefig(save_path / "loss_curves.png")
-    # plt.clf()
-    # plt.close()
-
-    # plot sample outputs
-    for i in range(20):
-        model.eval()
-        with torch.no_grad():
-            sample_input, sample_target = next(iter(train_loader))
-            sample_input, sample_target = sample_input.to(device), sample_target.to(
-                device
-            )
-            predicted_residual = model(sample_input)
-            sample_output = (sample_input - predicted_residual).cpu()
-
-        idx = 0
-        plt.figure(figsize=(15, 5))
-        plt.subplot(1, 3, 1)
-        plt.imshow(sample_input[idx].cpu().numpy().squeeze(), cmap="gray")
-        plt.title("Noisy Input")
-        plt.axis("off")
-        plt.subplot(1, 3, 2)
-        plt.imshow(sample_target[idx].cpu().numpy().squeeze(), cmap="gray")
-        plt.title("Clean Target")
-        plt.axis("off")
-        plt.subplot(1, 3, 3)
-        plt.imshow(sample_output[idx].squeeze(), cmap="gray")
-        plt.title("Model Output")
-        plt.axis("off")
-        plt.tight_layout()
-        plt.savefig(save_path / f"sample_output_{i}.png")
-        plt.clf()
-        plt.close()
 
 
 if __name__ == "__main__":
