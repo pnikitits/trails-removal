@@ -96,6 +96,7 @@ def clean_satellite_trail(
     model.to(device)
 
     cleaned_tiles = []
+    residuals = []
     for tile in tiles:
 
         with torch.no_grad():
@@ -106,9 +107,11 @@ def clean_satellite_trail(
                 .to(device)
             )
             predicted_residual = model(tile_tensor)
+            residuals.append(predicted_residual.cpu().numpy().squeeze(0).squeeze(0))
             cleaned = tile_tensor - predicted_residual
             cleaned_tiles.append(cleaned.cpu().numpy().squeeze(0).squeeze(0))
 
     cleaned_img = reassemble_from_tiles(cleaned_tiles, coords, shape, tile_size)
+    residual_img = reassemble_from_tiles(residuals, coords, shape, tile_size)
 
-    return np.clip(cleaned_img, 0, 1)
+    return np.clip(cleaned_img, 0, 1), np.clip(residual_img, 0, 1)

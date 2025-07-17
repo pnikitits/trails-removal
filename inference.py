@@ -1,5 +1,5 @@
 from model import load_model, clean_satellite_trail
-from utils import *
+from utils import rgb_to_grayscale, normalize, auto_stretch, show, add_fake_trail
 from astropy.io import fits
 import numpy as np
 
@@ -16,7 +16,7 @@ def main():
     5. normalize()
     """
     model = load_model(
-        "results/20250717-103944/model_epoch_2000.pth",
+        "results/20250717-144407/model_epoch_1500.pth",
         device="mps",
     )
 
@@ -39,9 +39,9 @@ def main():
     # --- test with real trail ---
     img_with_trail = img.copy()
 
-    img_norm, min_val, max_val = normalize(img_with_trail)
+    img_norm, _, _ = normalize(img_with_trail)
 
-    cleaned_img = clean_satellite_trail(
+    cleaned_img, residual_img = clean_satellite_trail(
         img=img_norm, model=model, tile_size=128, overlap=32
     )
 
@@ -49,8 +49,8 @@ def main():
     cleaned_display, _, _ = auto_stretch(cleaned_img)
 
     show(
-        [img_display, cleaned_display],
-        title=["Input with real trail", "Cleaned image"],
+        [img_display, cleaned_display, residual_img],
+        title=["Input with real trail", "Cleaned image", "Predicted residual"],
     )
 
 

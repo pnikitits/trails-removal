@@ -5,3 +5,6 @@ wandb
 __pycache__
 .DS_Store
 .DS_Store?
+notes.txt
+build.py
+combined_script.py
