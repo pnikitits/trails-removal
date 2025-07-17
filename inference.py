@@ -16,28 +16,41 @@ def main():
     5. normalize()
     """
     model = load_model(
-        "results/20250704-180452/model_weights.pth",
+        "results/20250717-103944/model_epoch_2000.pth",
         device="mps",
     )
 
     # assume RGB debayered image
-    # test_path = "data/test_image.fit"
-    test_path = "data/debayered_subset/deb_00001.fit"
+
+    # --- test with synthetic trail ---
+    # test_path = "data/debayered_subset/deb_00001.fit"
+
+    # --- test with real trail ---
+    test_path = "data/test_image.fit"
+
+    # --- common transformations ---
     img = fits.getdata(test_path).astype(np.float32)
     img = np.transpose(img, (1, 2, 0))
-
     img = rgb_to_grayscale(img)
-    img_with_trail = add_fake_trail(img.copy())
+
+    # --- test with synthetic trail ---
+    # img_with_trail = add_fake_trail(img.copy())
+
+    # --- test with real trail ---
+    img_with_trail = img.copy()
+
     img_norm, min_val, max_val = normalize(img_with_trail)
 
-    cleaned_img = clean_satellite_trail(img_norm, model)
+    cleaned_img = clean_satellite_trail(
+        img=img_norm, model=model, tile_size=128, overlap=32
+    )
 
     img_display, _, _ = auto_stretch(img_with_trail)
     cleaned_display, _, _ = auto_stretch(cleaned_img)
 
     show(
         [img_display, cleaned_display],
-        title=["Input w/ Fake Trail", "Cleaned Image"],
+        title=["Input with real trail", "Cleaned image"],
     )
 
 
