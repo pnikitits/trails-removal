@@ -246,6 +246,10 @@ def check_image_range(image: np.ndarray):
     return image.min(), image.max()
 
 
+def running_average(data, window_size):
+    return np.convolve(data, np.ones(window_size) / window_size, mode="valid")
+
+
 if __name__ == "__main__":
     img_path = "data/debayered_set/deb_00001.fit"
     img = fits.getdata(img_path).astype(np.float32)
@@ -255,7 +259,7 @@ if __name__ == "__main__":
     img_max = img.max()
     _, min_val, max_val = normalize(img)
 
-    tiles, coords = split_into_tiles(img, tile_size=256, overlap=32)
+    tiles, coords = split_into_tiles(img, tile_size=128, overlap=32)
 
     tiles = [add_fake_trail(tile, img_max=img_max) for tile in tiles]
     tiles = [normalize(tile, min_val=min_val, max_val=max_val)[0] for tile in tiles]
@@ -267,7 +271,7 @@ if __name__ == "__main__":
 
     # show(s_tiles[:4])
     show(
-        [reassemble_from_tiles(tiles, coords, img.shape, tile_size=256)],
+        [reassemble_from_tiles(tiles, coords, img.shape, tile_size=128)],
         title="Reassembled Image",
         stretch=True,
     )

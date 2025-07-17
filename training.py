@@ -12,7 +12,7 @@ from torch.utils.data import DataLoader, random_split
 import wandb
 from dataset import FITSSatelliteTileDataset
 from model import UNet
-from utils import show, check_image_range
+from utils import show, check_image_range, running_average
 
 
 LOG_WANDB = False
@@ -185,17 +185,24 @@ def train_model(
 
                 # plot learning if any loss is below the threshold (0.0002)
                 if any(loss < 0.0002 for loss in log_train_y + log_val_y):
+
+                    window_size = 10
+                    log_train_y_avg = running_average(log_train_y, window_size)
+                    log_train_x_avg = log_train_x[window_size - 1 :]
+                    log_val_y_avg = running_average(log_val_y, window_size)
+                    log_val_x_avg = log_val_x[window_size - 1 :]
+
                     plt.figure(figsize=(10, 5))
                     plt.plot(
-                        log_train_x,
-                        log_train_y,
+                        log_train_x_avg,
+                        log_train_y_avg,
                         label="Training Loss",
                         color=(7 / 255, 27 / 255, 112 / 255),
                         linewidth=1,
                     )
                     plt.plot(
-                        log_val_x,
-                        log_val_y,
+                        log_val_x_avg,
+                        log_val_y_avg,
                         label="Validation Loss",
                         linestyle="--",
                         color=(7 / 255, 27 / 255, 112 / 255),
@@ -322,12 +329,12 @@ def main():
 
     train_subset = torch.utils.data.Subset(
         train_dataset,
-        random.sample(range(len(train_dataset)), min(40, len(train_dataset))),
+        random.sample(range(len(train_dataset)), min(80, len(train_dataset))),
     )
     train_loader = DataLoader(train_subset, batch_size=4, shuffle=True)
 
     val_subset = torch.utils.data.Subset(
-        val_dataset, random.sample(range(len(val_dataset)), min(12, len(val_dataset)))
+        val_dataset, random.sample(range(len(val_dataset)), min(24, len(val_dataset)))
     )
     val_loader = DataLoader(val_subset, batch_size=4, shuffle=False)
 
